@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <assert.h>
 
+// defining the size of the message server can accept
 const size_t k_max_msg = 4096;
 
 static void msg(const char *msg) {
@@ -59,7 +60,7 @@ static int32_t write_all(int fd, const char *buf, size_t n) {
   return 0;
 }
 
-satic void do_something(int conn_fd) {
+static void do_something(int conn_fd) {
   char rbuf[64] = {};
   ssize_t n = read(conn_fd, rbuf, sizeof(rbuf) - 1);
   
@@ -74,34 +75,42 @@ satic void do_something(int conn_fd) {
 }
 
 static int32_t one_request(int conn_fd) {
+  // 4 bytes header
   char rbuf[4 + k_max_msg];
   errno = 0;
 
+  // Get the length of the message
   int32_t err = read_full(conn_fd, rbuf, 4);
   if (err) {
     msg(errno == 0 ? "EOF" : "read() error");
     return err;
   }
 
+  // Extracting the length 
   uint32_t len = 0;
-  memcpy(&len, rbuf, 4); // assume little endian
+  memcpy(&len, rbuf, 4);
+
   if (len > k_max_msg) {
     msg("too long");
     return -1;
   }
 
+  // reading the message of the desired length
   err = read_full(conn_fd, &rbuf[4], len);
   if (err) {
-    msg("read error()");
-    return err;
+    msg("read() error");
+    return -1;
   }
 
   printf("client says: %.*s\n", len, &rbuf[4]);
+
+  // replying the same way. 4 for length and the rest for the size of the response
   const char reply[] = "world";
   char wbuf[4 + sizeof(reply)];
   len = (uint32_t)strlen(reply);
   memcpy(wbuf, &len, 4);
   memcpy(&wbuf[4], reply, len);
+
   return write_all(conn_fd, wbuf, 4 + len);
 }
 
