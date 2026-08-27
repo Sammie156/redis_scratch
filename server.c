@@ -143,6 +143,7 @@ int main(int argc, const char* argv[]) {
     die("listen()");
   }
 
+  // server loop
   while (true) {
     struct sockaddr_in client_addr = {};
     socklen_t addrlen = sizeof(client_addr);
